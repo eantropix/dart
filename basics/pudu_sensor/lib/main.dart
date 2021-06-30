@@ -1,87 +1,102 @@
-import 'dart:ui';
-
+// ignore_for_file: public_member_api_docs, lines_longer_than_80_chars
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:pudu_sensor/widgets/sensor_info_widget.dart';
+import 'package:provider/provider.dart';
+
+/// This is a reimplementation of the default Flutter application using provider + [ChangeNotifier].
 
 void main() {
-  runApp(MyApp());
+  runApp(
+    /// Providers are above [MyApp] instead of inside it, so that tests
+    /// can use [MyApp] while mocking the providers
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => Counter()),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
+
+/// Mix-in [DiagnosticableTreeMixin] to have access to [debugFillProperties] for the devtool
+// ignore: prefer_mixin
+class Counter with ChangeNotifier, DiagnosticableTreeMixin {
+  int _count = 0;
+
+  int get count => _count;
+
+  void increment() {
+    _count++;
+    notifyListeners();
+  }
+
+  /// Makes `Counter` readable inside the devtools by listing all of its properties
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(IntProperty('count', count));
+  }
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+    return const MaterialApp(
+      home: MyHomePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key? key, required this.title}) : super(key: key);
-  final String title;
-
-  @override
-  _MyHomePageState createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  var sensorInfoWidget = SensorInfoWidget;
+class MyHomePage extends StatelessWidget {
+  const MyHomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final sensorNames = [
-      "Vision",
-      "Imaging",
-      "Temperature",
-      "Radiation",
-      "Proximity",
-      "Pressure",
-      "Position",
-      "Photoelectric",
-      "Particle",
-      "Motion",
-      "Metal",
-      "Level",
-      "Leak",
-      "Humidity",
-      "Gas",
-      "Chemical",
-      "Force",
-      "Flow",
-      "Flaw",
-      "Flame",
-      "Electrical",
-      "Contact",
-      "Non-Contact"
-    ];
-    double width = MediaQuery.of(context).size.width;
-    double height = MediaQuery.of(context).size.height;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: const Text('Example'),
       ),
-      body: Container(
-        width: width,
-        height: height,
-        child: ListView.builder(
-          itemCount: sensorNames.length,
-          itemBuilder: (context, index) {
-            return Padding(
-              padding: EdgeInsets.all(4),
-              child: SensorInfoWidget(
-                context,
-                width: width,
-                sensor_name: sensorNames[index],
-              ),
-            );
-          },
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const <Widget>[
+            Text('You have pushed the button this many times:'),
+
+            /// Extracted as a separate widget for performance optimization.
+            /// As a separate widget, it will rebuild independently from [MyHomePage].
+            ///
+            /// This is totally optional (and rarely needed).
+            /// Similarly, we could also use [Consumer] or [Selector].
+            Count(),
+          ],
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        key: const Key('increment_floatingActionButton'),
+
+        /// Calls `context.read` instead of `context.watch` so that it does not rebuild
+        /// when [Counter] changes.
+        onPressed: () => context.read<Counter>().increment(),
+        tooltip: 'Increment',
+        child: const Icon(Icons.add),
+      ),
     );
+  }
+}
+
+class Count extends StatelessWidget {
+  const Count({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+
+        /// Calls `context.watch` to make [Count] rebuild when [Counter] changes.
+        '${context.watch<Counter>().count}',
+        key: const Key('counterState'),
+        style: Theme.of(context).textTheme.headline4);
   }
 }
